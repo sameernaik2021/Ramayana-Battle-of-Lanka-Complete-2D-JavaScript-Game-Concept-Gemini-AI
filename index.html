@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ramayana: Battle of Lanka</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Montserrat:wght@400;600;700&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b090a;
+            color: #f8f9fa;
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Canvas styling */
+        #gameCanvas {
+            display: block;
+            touch-action: none;
+            box-shadow: 0 0 30px rgba(255, 153, 51, 0.2);
+            background: #000;
+        }
+
+        /* Gold gradient text utility */
+        .text-gold-gradient {
+            background: linear-gradient(135deg, #FFF5C0 0%, #F1A80A 50%, #935B00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gold-border {
+            border: 2px solid #e5a93b;
+            box-shadow: 0 0 15px rgba(229, 169, 59, 0.4);
+        }
+
+        /* Glowing button hover effects */
+        .btn-epic {
+            background: linear-gradient(180deg, #e65100 0%, #b71c1c 100%);
+            border: 1px solid #ffb74d;
+            transition: all 0.2s ease-in-out;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .btn-epic:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 20px rgba(255, 152, 0, 0.8);
+            background: linear-gradient(180deg, #f57c00 0%, #c62828 100%);
+        }
+
+        .btn-epic:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(20, 10, 5, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e5a93b;
+            border-radius: 4px;
+        }
+
+        /* Pulse Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 153, 51, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(255, 153, 51, 0.9); }
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center relative w-full h-full bg-neutral-950">
+
+    <!-- GAME CANVAS -->
+    <div id="gameContainer" class="relative overflow-hidden w-full h-full max-w-[1280px] max-h-[720px] rounded-lg shadow-2xl flex items-center justify-center border border-amber-900/40">
+        <canvas id="gameCanvas" width="1280" height="720" class="w-full h-full object-contain"></canvas>
+
+        <!-- UI OVERLAY LAYER -->
+        <div id="uiLayer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10">
+            
+            <!-- HUD TOP BAR (Visible only during PLAYING state) -->
+            <div id="hudTop" class="flex justify-between items-start opacity-0 transition-opacity duration-300 pointer-events-auto">
+                <!-- Rama Info -->
+                <div class="flex items-center space-x-3 bg-black/70 backdrop-blur-md p-3 rounded-xl border border-amber-500/40 min-w-[280px]">
+                    <div class="relative w-12 h-12 rounded-full border-2 border-amber-400 bg-amber-950 flex items-center justify-center overflow-hidden">
+                        <!-- Crown SVG Avatar -->
+                        <svg class="w-8 h-8 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-cinzel font-bold text-amber-300 text-sm tracking-wider">LORD RAMA</span>
+                            <span id="hpText" class="text-xs text-amber-200 font-mono">100/100</span>
+                        </div>
+                        <!-- Health Bar -->
+                        <div class="w-full bg-gray-900 h-3 rounded-full overflow-hidden border border-amber-900">
+                            <div id="hpBar" class="bg-gradient-to-r from-red-600 via-amber-500 to-emerald-500 h-full w-full transition-all duration-200"></div>
+                        </div>
+                        <!-- Quiver Energy Bar -->
+                        <div class="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div id="arrowEnergyBar" class="bg-cyan-400 h-full w-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Level & Score Title -->
+                <div class="text-center bg-black/70 backdrop-blur-md px-6 py-2 rounded-xl border border-amber-500/30">
+                    <div id="levelTitleHUD" class="font-cinzel text-amber-400 font-bold tracking-widest text-base">LEVEL 1</div>
+                    <div id="scoreHUD" class="text-xs text-amber-100/80 font-mono">SCORE: 0</div>
+                </div>
+
+                <!-- Boss HP Bar (Hidden by default) -->
+                <div id="bossHud" class="hidden flex-1 max-w-xs mx-4 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-red-600/50">
+                    <div class="flex justify-between text-xs font-cinzel text-red-400 font-bold mb-1">
+                        <span id="bossNameHUD">RAVANA</span>
+                        <span id="bossHpText">1000/1000</span>
+                    </div>
+                    <div class="w-full bg-gray-950 h-3 rounded-full overflow-hidden border border-red-900">
+                        <div id="bossHpBar" class="bg-gradient-to-r from-orange-600 to-red-600 h-full w-full transition-all duration-150"></div>
+                    </div>
+                </div>
+
+                <!-- Buttons & Controls HUD -->
+                <div class="flex items-center space-x-2">
+                    <button id="audioToggleBtn" class="bg-black/70 hover:bg-amber-900/50 border border-amber-500/40 text-amber-300 p-2.5 rounded-xl transition">
+                        🔊
+                    </button>
+                    <button id="pauseBtn" class="bg-black/70 hover:bg-amber-900/50 border border-amber-500/40 text-amber-300 px-4 py-2 rounded-xl font-cinzel font-bold text-sm transition">
+                        PAUSE
+                    </button>
+                </div>
+            </div>
+
+            <!-- HUD BOTTOM BAR: Hanuman Divine Ability -->
+            <div id="hudBottom" class="flex justify-center items-end opacity-0 transition-opacity duration-300 pointer-events-auto">
+                <div id="hanumanAbilityContainer" class="hidden flex items-center bg-black/80 border border-amber-500/50 rounded-2xl p-2 px-4 shadow-xl space-x-3">
+                    <button id="hanumanBtn" class="relative w-14 h-14 rounded-xl bg-gradient-to-b from-amber-600 to-red-700 border-2 border-amber-300 flex items-center justify-center font-bold text-2xl shadow-lg hover:scale-105 active:scale-95 transition disabled:opacity-50 disabled:grayscale">
+                        🐒
+                        <div id="hanumanCooldownOverlay" class="absolute inset-0 bg-black/70 rounded-lg flex items-center justify-center text-xs font-mono text-amber-300 hidden">30s</div>
+                    </button>
+                    <div>
+                        <div class="font-cinzel text-xs font-bold text-amber-300">HANUMAN'S BLESSING [H]</div>
+                        <div class="text-[10px] text-amber-100/70">Summon Divine Vanara Power to clear enemy threats</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENU / OVERLAY PANELS (Interactive Overlay) -->
+        <div id="overlayContainer" class="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-md transition-all duration-300">
+            
+            <!-- 1. MAIN MENU PANEL -->
+            <div id="menuPanel" class="flex flex-col items-center max-w-lg w-full p-8 bg-gradient-to-b from-amber-950/90 via-black/90 to-stone-950/95 border-2 border-amber-500/60 rounded-2xl shadow-2xl text-center space-y-6">
+                <div>
+                    <h1 class="font-cinzel text-4xl sm:text-5xl font-extrabold text-gold-gradient tracking-wider drop-shadow-md">RAMAYANA</h1>
+                    <p class="font-cinzel text-sm sm:text-base text-amber-400 tracking-widest mt-1">BATTLE OF LANKA</p>
+                </div>
+
+                <div class="w-full space-y-3 pt-2">
+                    <button id="startGameBtn" class="btn-epic w-full py-3.5 rounded-xl font-cinzel font-bold text-lg text-amber-100 tracking-wider">
+                        NEW CAMPAIGN
+                    </button>
+                    <button id="levelSelectBtn" class="w-full py-3 rounded-xl font-cinzel font-semibold text-amber-300 border border-amber-600/50 hover:bg-amber-900/30 transition">
+                        LEVEL SELECT
+                    </button>
+                    <button id="controlsBtn" class="w-full py-3 rounded-xl font-cinzel font-semibold text-amber-300 border border-amber-600/50 hover:bg-amber-900/30 transition">
+                        CONTROLS & HOW TO PLAY
+                    </button>
+                </div>
+
+                <div class="text-xs text-amber-200/50 font-serif">
+                    A 2D Action-Adventure Experience inspired by the ancient Indian Epic.
+                </div>
+            </div>
+
+            <!-- 2. LEVEL SELECT PANEL -->
+            <div id="levelSelectPanel" class="hidden flex-col items-center max-w-2xl w-full p-8 bg-stone-950 border-2 border-amber-500/60 rounded-2xl shadow-2xl text-center">
+                <h2 class="font-cinzel text-2xl font-bold text-amber-400 mb-6 tracking-wide">SELECT CHAPTER</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full mb-6">
+                    <button class="lvl-select-card p-4 rounded-xl border border-amber-600/40 bg-amber-950/30 hover:bg-amber-800/40 transition text-left" data-level="0">
+                        <div class="text-xs text-amber-400 font-cinzel font-bold">CHAPTER 1</div>
+                        <div class="text-sm font-semibold text-amber-100">Ayodhya</div>
+                        <div class="text-[10px] text-amber-200/60 mt-1">Tutorial & Training</div>
+                    </button>
+                    <button class="lvl-select-card p-4 rounded-xl border border-amber-600/40 bg-amber-950/30 hover:bg-amber-800/40 transition text-left" data-level="1">
+                        <div class="text-xs text-amber-400 font-cinzel font-bold">CHAPTER 2</div>
+                        <div class="text-sm font-semibold text-amber-100">Forest</div>
+                        <div class="text-[10px] text-amber-200/60 mt-1">Dandakaranya Hazards</div>
+                    </button>
+                    <button class="lvl-select-card p-4 rounded-xl border border-amber-600/40 bg-amber-950/30 hover:bg-amber-800/40 transition text-left" data-level="2">
+                        <div class="text-xs text-amber-400 font-cinzel font-bold">CHAPTER 3</div>
+                        <div class="text-sm font-semibold text-amber-100">Kishkindha</div>
+                        <div class="text-[10px] text-amber-200/60 mt-1">Alliance & Hanuman</div>
+                    </button>
+                    <button class="lvl-select-card p-4 rounded-xl border border-amber-600/40 bg-amber-950/30 hover:bg-amber-800/40 transition text-left" data-level="3">
+                        <div class="text-xs text-amber-400 font-cinzel font-bold">CHAPTER 4</div>
+                        <div class="text-sm font-semibold text-amber-100">Ocean Sethu</div>
+                        <div class="text-[10px] text-amber-200/60 mt-1">Bridge Wave Survival</div>
+                    </button>
+                    <button class="lvl-select-card p-4 rounded-xl border border-amber-600/40 bg-amber-950/30 hover:bg-amber-800/40 transition text-left" data-level="4">
+                        <div class="text-xs text-amber-400 font-cinzel font-bold">CHAPTER 5</div>
+                        <div class="text-sm font-semibold text-amber-100">Lanka Gates</div>
+                        <div class="text-[10px] text-amber-200/60 mt-1">Fortress Infiltration</div>
+                    </button>
+                    <button class="lvl-select-card p-4 rounded-xl border border-amber-600/40 bg-amber-950/30 hover:bg-amber-800/40 transition text-left" data-level="5">
+                        <div class="text-xs text-amber-400 font-cinzel font-bold">CHAPTER 6</div>
+                        <div class="text-sm font-semibold text-amber-100">Battle of Lanka</div>
+                        <div class="text-[10px] text-amber-200/60 mt-1">Final Boss: Ravana</div>
+                    </button>
+                </div>
+                <button id="backToMenuBtn" class="px-6 py-2 rounded-xl border border-amber-600 text-amber-300 hover:bg-amber-900/40 transition font-cinzel text-sm">
+                    BACK TO MENU
+                </button>
+            </div>
+
+            <!-- 3. CONTROLS / HELP PANEL -->
+            <div id="controlsPanel" class="hidden flex-col items-center max-w-lg w-full p-8 bg-stone-950 border-2 border-amber-500/60 rounded-2xl shadow-2xl text-center space-y-4">
+                <h2 class="font-cinzel text-2xl font-bold text-amber-400 tracking-wide">CONTROLS & GUIDANCE</h2>
+                <div class="text-left text-sm space-y-3 w-full bg-amber-950/20 p-4 rounded-xl border border-amber-900/50">
+                    <div class="flex justify-between"><span class="text-amber-300 font-bold">A / D or Left / Right:</span><span class="text-gray-300">Move Rama</span></div>
+                    <div class="flex justify-between"><span class="text-amber-300 font-bold">W / Space / Up:</span><span class="text-gray-300">Jump</span></div>
+                    <div class="flex justify-between"><span class="text-amber-300 font-bold">Mouse Aim + Left Click:</span><span class="text-gray-300">Aim & Shoot Arrow</span></div>
+                    <div class="flex justify-between"><span class="text-amber-300 font-bold">Key 'F' or Space:</span><span class="text-gray-300">Quick Straight Arrow</span></div>
+                    <div class="flex justify-between"><span class="text-amber-300 font-bold">Key 'H' or Onscreen Icon:</span><span class="text-gray-300">Hanuman Divine Blessing</span></div>
+                </div>
+                <button id="closeControlsBtn" class="px-6 py-2 rounded-xl border border-amber-600 text-amber-300 hover:bg-amber-900/40 transition font-cinzel text-sm">
+                    BACK TO MENU
+                </button>
+            </div>
+
+            <!-- 4. STORY SCENE PANEL -->
+            <div id="storyPanel" class="hidden flex-col items-center max-w-2xl w-full p-6 bg-gradient-to-b from-stone-900 to-black border-2 border-amber-500/60 rounded-2xl shadow-2xl space-y-4">
+                <div class="flex items-center space-x-4 w-full">
+                    <div id="storyAvatar" class="w-20 h-20 rounded-full border-2 border-amber-400 bg-amber-950 flex-shrink-0 flex items-center justify-center text-4xl shadow-md">
+                        🏹
+                    </div>
+                    <div>
+                        <div id="storySpeaker" class="font-cinzel font-bold text-amber-400 text-lg">LORD RAMA</div>
+                        <div id="storyChapterTitle" class="text-xs text-amber-200/70 font-mono tracking-widest">CHAPTER NARRATIVE</div>
+                    </div>
+                </div>
+                <div id="storyText" class="w-full min-h-[100px] bg-amber-950/30 p-4 rounded-xl border border-amber-900/40 font-serif text-amber-100 text-sm sm:text-base leading-relaxed">
+                    Dialogue content...
+                </div>
+                <button id="continueStoryBtn" class="btn-epic self-end px-8 py-2.5 rounded-xl font-cinzel font-bold text-amber-100 tracking-wider">
+                    CONTINUE ▶
+                </button>
+            </div>
+
+            <!-- 5. PAUSE PANEL -->
+            <div id="pausePanel" class="hidden flex-col items-center max-w-sm w-full p-8 bg-stone-950 border-2 border-amber-500/60 rounded-2xl shadow-2xl text-center space-y-4">
+                <h2 class="font-cinzel text-3xl font-bold text-amber-400">GAME PAUSED</h2>
+                <div class="w-full space-y-3 pt-2">
+                    <button id="resumeBtn" class="btn-epic w-full py-3 rounded-xl font-cinzel font-bold text-amber-100">RESUME</button>
+                    <button id="restartLvlBtn" class="w-full py-2.5 rounded-xl font-cinzel font-semibold text-amber-300 border border-amber-600/50 hover:bg-amber-900/30 transition">RESTART LEVEL</button>
+                    <button id="quitToMenuBtn" class="w-full py-2.5 rounded-xl font-cinzel font-semibold text-amber-300 border border-amber-600/50 hover:bg-amber-900/30 transition">MAIN MENU</button>
+                </div>
+            </div>
+
+            <!-- 6. LEVEL COMPLETE PANEL -->
+            <div id="levelCompletePanel" class="hidden flex-col items-center max-w-md w-full p-8 bg-gradient-to-b from-amber-950 to-stone-950 border-2 border-amber-500/80 rounded-2xl shadow-2xl text-center space-y-5">
+                <div class="text-4xl">👑</div>
+                <h2 class="font-cinzel text-3xl font-extrabold text-gold-gradient">VICTORY ACHIEVED</h2>
+                <div class="text-amber-200 text-sm font-serif italic" id="victorySubText">The forces of righteousness prevail!</div>
+                <div class="w-full bg-black/50 p-4 rounded-xl border border-amber-900/60 text-left space-y-2 font-mono text-sm">
+                    <div class="flex justify-between"><span class="text-amber-400">Chapter Score:</span><span id="lvlScoreVal" class="text-white">1000</span></div>
+                    <div class="flex justify-between"><span class="text-amber-400">Demons Defeated:</span><span id="lvlKillsVal" class="text-white">12</span></div>
+                    <div class="flex justify-between"><span class="text-amber-400">Health Remaining:</span><span id="lvlHpVal" class="text-white">85%</span></div>
+                </div>
+                <button id="nextLevelBtn" class="btn-epic w-full py-3 rounded-xl font-cinzel font-bold text-amber-100 tracking-wider">
+                    NEXT CHAPTER ▶
+                </button>
+            </div>
+
+            <!-- 7. GAME OVER PANEL -->
+            <div id="gameOverPanel" class="hidden flex-col items-center max-w-md w-full p-8 bg-gradient-to-b from-red-950 to-stone-950 border-2 border-red-600/80 rounded-2xl shadow-2xl text-center space-y-5">
+                <div class="text-4xl">⚔️</div>
+                <h2 class="font-cinzel text-3xl font-extrabold text-red-500 tracking-wide">RAMA HAS FALLEN</h2>
+                <p class="text-red-200/80 text-sm font-serif">Do not despair. Stand again for righteousness!</p>
+                <div class="w-full space-y-3 pt-2">
+                    <button id="retryLevelBtn" class="btn-epic w-full py-3 rounded-xl font-cinzel font-bold text-amber-100">RETRY LEVEL</button>
+                    <button id="gameOverMenuBtn" class="w-full py-2.5 rounded-xl font-cinzel font-semibold text-amber-300 border border-amber-600/50 hover:bg-amber-900/30 transition">MAIN MENU</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT ENGINE -->
+    <script>
+        // ==========================================
+        // PROCEDURAL AUDIO SYNTHESIZER (Web Audio API)
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+            }
+
+            playBowRelease() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playHitSound() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playExplosion() {
+                if (this.muted || !this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.3;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.3);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            playHanumanBlessing() {
+                if (this.muted || !this.ctx) return;
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + idx * 0.08 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.5);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.5);
+                });
+            }
+
+            playVictoryFanfare() {
+                if (this.muted || !this.ctx) return;
+                const notes = [392, 523.25, 659.25, 783.99];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    const startTime = this.ctx.currentTime + idx * 0.15;
+                    gain.gain.setValueAtTime(0.3, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.4);
+                });
+            }
+        }
+
+        const audioFX = new SoundEngine();
+
+        // ==========================================
+        // GAME CONFIG & LEVEL DEFINITIONS
+        // ==========================================
+        const CANVAS_WIDTH = 1280;
+        const CANVAS_HEIGHT = 720;
+        const GROUND_Y = 600;
+
+        const LEVEL_CONFIGS = [
+            {
+                id: 0,
+                name: "Ayodhya Training",
+                bgType: "ayodhya",
+                storyIntro: {
+                    speaker: "GURU VASHISTHA",
+                    avatar: "🧙‍♂️",
+                    title: "CHAPTER I: THE ROYAL LESSONS",
+                    text: "Welcome, Prince Rama. Master the art of the bow in Ayodhya. Practice moving, jumping, and striking the targets before you set forth on your sacred destiny."
+                },
+                targetsToClear: 5,
+                hasEnemies: false
+            },
+            {
+                id: 1,
+                name: "Dandakaranya Forest",
+                bgType: "forest",
+                storyIntro: {
+                    speaker: "LORD RAMA",
+                    avatar: "🏹",
+                    title: "CHAPTER II: INTO THE WILD",
+                    text: "Demonic forces infest the sacred Dandakaranya forest. We must protect the hermits and purge the Rakshasas from these woods."
+                },
+                waveCount: 3,
+                enemiesPerWave: 4,
+                enemyTypes: ["grunt", "archer"]
+            },
+            {
+                id: 2,
+                name: "Kishkindha Mountains",
+                bgType: "kishkindha",
+                storyIntro: {
+                    speaker: "HANUMAN",
+                    avatar: "🐒",
+                    title: "CHAPTER III: THE VANARA ALLIANCE",
+                    text: "My Lord Rama! The Vanara kingdom stands with you. Call upon my divine strength [Key H] whenever you are overwhelmed by enemy hordes!"
+                },
+                waveCount: 4,
+                enemiesPerWave: 5,
+                enemyTypes: ["grunt", "archer", "flying"]
+            },
+            {
+                id: 3,
+                name: "Ocean Sethu Bridge",
+                bgType: "ocean",
+                storyIntro: {
+                    speaker: "LAKSHMANA",
+                    avatar: "🏹",
+                    title: "CHAPTER IV: CROSSING THE OCEAN",
+                    text: "The divine Ram Setu bridge is complete! Hold the bridge against Ravana's aerial and naval legions as we march toward Lanka!"
+                },
+                waveCount: 4,
+                enemiesPerWave: 6,
+                enemyTypes: ["archer", "flying", "armored"]
+            },
+            {
+                id: 4,
+                name: "Lanka Gates",
+                bgType: "lanka_gates",
+                storyIntro: {
+                    speaker: "VIBHISHANA",
+                    avatar: "🔱",
+                    title: "CHAPTER V: FORTRESS OF GOLD",
+                    text: "These iron gates shield Lanka's stronghold. Elite commanders guard the entrance. Break through their defenses!"
+                },
+                waveCount: 5,
+                enemiesPerWave: 7,
+                enemyTypes: ["grunt", "archer", "flying", "armored"]
+            },
+            {
+                id: 5,
+                name: "Battle of Lanka",
+                bgType: "lanka_citadel",
+                storyIntro: {
+                    speaker: "RAVANA",
+                    avatar: "👹",
+                    title: "CHAPTER VI: THE FINAL CONFRONTATION",
+                    text: "Insolent mortal! You dare enter my realm? Witness the ten-headed master of the three worlds!"
+                },
+                isBossLevel: true
+            }
+        ];
+
+        // ==========================================
+        // PARTICLE SYSTEM & VISUAL EFFECTS
+        // ==========================================
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.maxLife = life;
+                this.life = life;
+                this.alpha = 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                this.alpha = Math.max(0, this.life / this.maxLife);
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let particles = [];
+
+        function addHitSparks(x, y, color = "#ffb74d") {
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 5;
+                particles.push(new Particle(
+                    x, y,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    color,
+                    2 + Math.random() * 3,
+                    20 + Math.random() * 15
+                ));
+            }
+        }
+
+        function addAuraEffect(x, y, color = "#4fc3f7") {
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(
+                    x + (Math.random() - 0.5) * 40,
+                    y + (Math.random() - 0.5) * 60,
+                    (Math.random() - 0.5) * 2,
+                    -1 - Math.random() * 3,
+                    color,
+                    3 + Math.random() * 4,
+                    30 + Math.random() * 20
+                ));
+            }
+        }
+
+        // ==========================================
+        // VECTOR CANVAS SPRITE DRAWING FUNCTIONS
+        // ==========================================
+
+        // Draw Player (Rama)
+        function drawRamaSprite(ctx, x, y, facingRight, state, animFrame, isDrawnBow, aimAngle) {
+            ctx.save();
+            ctx.translate(x, y);
+            if (!facingRight) ctx.scale(-1, 1);
+
+            // Aura / Divine Glow
+            ctx.shadowColor = '#ffe082';
+            ctx.shadowBlur = 10;
+
+            // Dhoti / Robe (Orange / Golden)
+            ctx.fillStyle = '#f57c00';
+            ctx.beginPath();
+            ctx.moveTo(-15, -10);
+            ctx.lineTo(15, -10);
+            ctx.lineTo(18, 30);
+            ctx.lineTo(-18, 30);
+            ctx.closePath();
+            ctx.fill();
+
+            // Torso (Blue divine skin tint)
+            ctx.fillStyle = '#42a5f5';
+            ctx.fillRect(-12, -45, 24, 35);
+
+            // Gold Armor / Garland
+            ctx.strokeStyle = '#ffd54f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-12, -45);
+            ctx.lineTo(0, -25);
+            ctx.lineTo(12, -45);
+            ctx.stroke();
+
+            // Legs Animation
+            ctx.fillStyle = '#e65100';
+            let legOffset = Math.sin(animFrame * 0.3) * 10;
+            if (state === 'idle') legOffset = 0;
+            ctx.fillRect(-10, 30, 8, 25 + legOffset);
+            ctx.fillRect(2, 30, 8, 25 - legOffset);
+
+            // Head & Crown (Mukut)
+            ctx.fillStyle = '#64b5f6';
+            ctx.beginPath();
+            ctx.arc(0, -58, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Face Details (Eye)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(4, -60, 4, 3);
+
+            // Golden Crown (Mukut)
+            ctx.fillStyle = '#ffb300';
+            ctx.beginPath();
+            ctx.moveTo(-14, -68);
+            ctx.lineTo(0, -90);
+            ctx.lineTo(14, -68);
+            ctx.lineTo(0, -72);
+            ctx.closePath();
+            ctx.fill();
+
+            // Bow & Arm Aiming
+            ctx.save();
+            ctx.translate(5, -40);
+            if (isDrawnBow) {
+                ctx.rotate(aimAngle || 0);
+            }
+
+            // Bow Wood
+            ctx.strokeStyle = '#8d6e63';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, 35, -Math.PI / 2.2, Math.PI / 2.2);
+            ctx.stroke();
+
+            // Bow String
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            const pullback = isDrawnBow ? -15 : 0;
+            ctx.moveTo(Math.cos(-Math.PI / 2.2) * 35, Math.sin(-Math.PI / 2.2) * 35);
+            ctx.lineTo(pullback, 0);
+            ctx.lineTo(Math.cos(Math.PI / 2.2) * 35, Math.sin(Math.PI / 2.2) * 35);
+            ctx.stroke();
+
+            // Arrow on Bow if drawn
+            if (isDrawnBow) {
+                ctx.strokeStyle = '#ffd54f';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(pullback, 0);
+                ctx.lineTo(35, 0);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        // Draw Enemy (Rakshasa)
+        function drawEnemySprite(ctx, enemy) {
+            ctx.save();
+            ctx.translate(enemy.x, enemy.y);
+            if (enemy.vx > 0) ctx.scale(-1, 1);
+
+            const isHit = enemy.hitFlash > 0;
+
+            if (enemy.type === 'grunt') {
+                // Red Rakshasa
+                ctx.fillStyle = isHit ? '#ffffff' : '#b71c1c';
+                ctx.fillRect(-18, -40, 36, 45);
+                // Head with Horns
+                ctx.beginPath();
+                ctx.arc(0, -50, 16, 0, Math.PI * 2);
+                ctx.fill();
+                // Horns
+                ctx.fillStyle = '#d7ccc8';
+                ctx.beginPath();
+                ctx.moveTo(-12, -60); ctx.lineTo(-20, -75); ctx.lineTo(-6, -62);
+                ctx.moveTo(12, -60); ctx.lineTo(20, -75); ctx.lineTo(6, -62);
+                ctx.fill();
+                // Glowing Red Eyes
+                ctx.fillStyle = '#ffeb3b';
+                ctx.fillRect(4, -54, 5, 4);
+            } 
+            else if (enemy.type === 'archer') {
+                // Ranged Rakshasa
+                ctx.fillStyle = isHit ? '#ffffff' : '#4a148c';
+                ctx.fillRect(-15, -35, 30, 40);
+                ctx.fillStyle = '#7b1fa2';
+                ctx.beginPath(); ctx.arc(0, -45, 14, 0, Math.PI * 2); ctx.fill();
+                // Dark bow
+                ctx.strokeStyle = '#4e342e'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(-10, -30, 25, -Math.PI/2, Math.PI/2); ctx.stroke();
+            }
+            else if (enemy.type === 'flying') {
+                // Gargoyle Demon
+                ctx.fillStyle = isHit ? '#ffffff' : '#263238';
+                ctx.beginPath(); ctx.arc(0, -20, 18, 0, Math.PI * 2); ctx.fill();
+                // Wings animation
+                const wingFlap = Math.sin(Date.now() * 0.01) * 15;
+                ctx.fillStyle = '#37474f';
+                ctx.beginPath();
+                ctx.moveTo(-10, -25); ctx.lineTo(-45, -45 + wingFlap); ctx.lineTo(-25, -10);
+                ctx.moveTo(10, -25); ctx.lineTo(45, -45 + wingFlap); ctx.lineTo(25, -10);
+                ctx.fill();
+            }
+            else if (enemy.type === 'armored') {
+                // Large Elite Demon
+                ctx.fillStyle = isHit ? '#ffffff' : '#3e2723';
+                ctx.fillRect(-25, -55, 50, 60);
+                ctx.fillStyle = '#ff6f00';
+                ctx.fillRect(-20, -50, 40, 20); // Golden chestplate
+                ctx.fillStyle = '#4e342e';
+                ctx.beginPath(); ctx.arc(0, -70, 20, 0, Math.PI * 2); ctx.fill();
+                // Club
+                ctx.fillStyle = '#212121';
+                ctx.fillRect(20, -60, 12, 50);
+            }
+
+            // Health Bar above enemy
+            if (enemy.hp < enemy.maxHp) {
+                const hpPct = Math.max(0, enemy.hp / enemy.maxHp);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(-20, -enemy.height - 15, 40, 6);
+                ctx.fillStyle = '#e53935';
+                ctx.fillRect(-20, -enemy.height - 15, 40 * hpPct, 6);
+            }
+
+            ctx.restore();
+        }
+
+        // Draw Boss (Ravana)
+        function drawRavanaBoss(ctx, boss) {
+            ctx.save();
+            ctx.translate(boss.x, boss.y);
+
+            const isHit = boss.hitFlash > 0;
+
+            // Phase Aura
+            if (boss.phase === 3) {
+                ctx.shadowColor = '#ff3d00';
+                ctx.shadowBlur = 25;
+            } else if (boss.phase === 2) {
+                ctx.shadowColor = '#ab47bc';
+                ctx.shadowBlur = 15;
+            }
+
+            // Giant Armor Torso
+            ctx.fillStyle = isHit ? '#ffffff' : '#1b5e20';
+            ctx.fillRect(-45, -90, 90, 100);
+
+            // Gold Ornamentation
+            ctx.fillStyle = '#ffd54f';
+            ctx.fillRect(-35, -80, 70, 30);
+
+            // Ten Heads Visualization
+            const headOffsets = [-45, -35, -25, -15, -5, 5, 15, 25, 35, 45];
+            headOffsets.forEach((hX, idx) => {
+                const isCenterHead = idx === 4 || idx === 5;
+                const headSize = isCenterHead ? 16 : 11;
+                const headY = isCenterHead ? -115 : -105;
+
+                ctx.fillStyle = isHit ? '#ffffff' : '#2e7d32';
+                ctx.beginPath();
+                ctx.arc(hX, headY, headSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Crowns on each head
+                ctx.fillStyle = '#ffb300';
+                ctx.beginPath();
+                ctx.moveTo(hX - headSize, headY - headSize + 2);
+                ctx.lineTo(hX, headY - headSize - 12);
+                ctx.lineTo(hX + headSize, headY - headSize + 2);
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#ff1744';
+                ctx.fillRect(hX + 1, headY - 3, 3, 3);
+            });
+
+            // Sword / Mace Weapon
+            ctx.fillStyle = '#b0bec5';
+            ctx.fillRect(-65, -100, 14, 110);
+            ctx.fillStyle = '#ffd54f';
+            ctx.fillRect(-72, -30, 28, 10);
+
+            ctx.restore();
+        }
+
+        // ==========================================
+        // PARALLAX BACKGROUND RENDERER
+        // ==========================================
+        function drawBackground(ctx, bgType, cameraX) {
+            ctx.save();
+
+            if (bgType === 'ayodhya') {
+                // Golden City & Sunset Sky
+                let grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+                grad.addColorStop(0, '#ff7043');
+                grad.addColorStop(0.6, '#ffca28');
+                grad.addColorStop(1, '#ffe082');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Palaces Silhouette in Background
+                ctx.fillStyle = '#d7ccc8';
+                for (let i = -2; i < 5; i++) {
+                    let pX = i * 350 - (cameraX * 0.2) % 350;
+                    ctx.beginPath();
+                    ctx.moveTo(pX, GROUND_Y);
+                    ctx.lineTo(pX, GROUND_Y - 180);
+                    ctx.lineTo(pX + 60, GROUND_Y - 260); // Dome
+                    ctx.lineTo(pX + 120, GROUND_Y - 180);
+                    ctx.lineTo(pX + 220, GROUND_Y - 180);
+                    ctx.lineTo(pX + 220, GROUND_Y);
+                    ctx.fill();
+                }
+            } 
+            else if (bgType === 'forest') {
+                // Lush Deep Forest
+                let grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+                grad.addColorStop(0, '#1b5e20');
+                grad.addColorStop(0.7, '#003300');
+                grad.addColorStop(1, '#001a00');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Trees Silhouette
+                ctx.fillStyle = '#2e7d32';
+                for (let i = -2; i < 8; i++) {
+                    let tX = i * 200 - (cameraX * 0.3) % 200;
+                    ctx.beginPath();
+                    ctx.arc(tX + 50, GROUND_Y - 180, 70, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillRect(tX + 35, GROUND_Y - 180, 30, 180);
+                }
+            }
+            else if (bgType === 'kishkindha') {
+                // Mountainous Kingdom
+                let grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+                grad.addColorStop(0, '#bf360c');
+                grad.addColorStop(0.5, '#ff8f00');
+                grad.addColorStop(1, '#4e342e');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Craggy Mountains
+                ctx.fillStyle = '#3e2723';
+                ctx.beginPath();
+                ctx.moveTo(0, GROUND_Y);
+                ctx.lineTo(200, 250);
+                ctx.lineTo(450, GROUND_Y);
+                ctx.lineTo(700, 200);
+                ctx.lineTo(1000, GROUND_Y);
+                ctx.lineTo(1280, 300);
+                ctx.lineTo(1280, GROUND_Y);
+                ctx.fill();
+            }
+            else if (bgType === 'ocean') {
+                // Ocean Sunset + Ram Setu Bridge
+                let grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+                grad.addColorStop(0, '#0d47a1');
+                grad.addColorStop(0.5, '#e65100');
+                grad.addColorStop(1, '#01579b');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Ocean Waves
+                ctx.fillStyle = '#0277bd';
+                ctx.fillRect(0, GROUND_Y - 20, CANVAS_WIDTH, 140);
+            }
+            else {
+                // Dark Fiery Lanka Castle
+                let grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+                grad.addColorStop(0, '#212121');
+                grad.addColorStop(0.6, '#4a148c');
+                grad.addColorStop(1, '#b71c1c');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Fiery Fortress Towers
+                ctx.fillStyle = '#000000';
+                for (let i = 0; i < 4; i++) {
+                    let bX = i * 380 - (cameraX * 0.1) % 380;
+                    ctx.fillRect(bX, GROUND_Y - 320, 140, 320);
+                    // Spikes on towers
+                    ctx.beginPath();
+                    ctx.moveTo(bX, GROUND_Y - 320);
+                    ctx.lineTo(bX + 70, GROUND_Y - 390);
+                    ctx.lineTo(bX + 140, GROUND_Y - 320);
+                    ctx.fill();
+                }
+            }
+
+            // Ground Floor Rendering
+            ctx.fillStyle = (bgType === 'ocean') ? '#8d6e63' : '#2d241e';
+            ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y);
+
+            // Ground Top Border Ribbon
+            ctx.fillStyle = '#ffb300';
+            ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, 4);
+
+            ctx.restore();
+        }
+
+        // ==========================================
+        // GAME STATE & OBJECT CLASSES
+        // ==========================================
+
+        class Player {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = 150;
+                this.y = GROUND_Y;
+                this.vx = 0;
+                this.vy = 0;
+                this.width = 40;
+                this.height = 70;
+                this.speed = 6;
+                this.hp = 100;
+                this.maxHp = 100;
+                this.isGrounded = true;
+                this.facingRight = true;
+                this.quiverEnergy = 100;
+                this.animFrame = 0;
+                this.state = 'idle';
+                this.isDrawingBow = false;
+                this.aimAngle = 0;
+                this.invulnerableTimer = 0;
+            }
+
+            update(keys, mouse) {
+                // Horizontal Movement
+                this.vx = 0;
+                if (keys['KeyA'] || keys['ArrowLeft']) {
+                    this.vx = -this.speed;
+                    this.facingRight = false;
+                    this.state = 'walk';
+                } else if (keys['KeyD'] || keys['ArrowRight']) {
+                    this.vx = this.speed;
+                    this.facingRight = true;
+                    this.state = 'walk';
+                } else {
+                    this.state = 'idle';
+                }
+
+                // Jump Physics
+                if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && this.isGrounded) {
+                    this.vy = -16;
+                    this.isGrounded = false;
+                }
+
+                // Gravity Application
+                this.vy += 0.8;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Screen Boundaries & Ground Collision
+                if (this.x < 40) this.x = 40;
+                if (this.x > CANVAS_WIDTH - 40) this.x = CANVAS_WIDTH - 40;
+
+                if (this.y >= GROUND_Y) {
+                    this.y = GROUND_Y;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                }
+
+                // Quiver Energy Regeneration
+                if (this.quiverEnergy < 100) this.quiverEnergy += 0.6;
+
+                // Aim Calculation from Mouse Position
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - (this.y - 40);
+                this.aimAngle = Math.atan2(dy, dx);
+                if (!this.facingRight) this.aimAngle = Math.atan2(dy, -dx);
+
+                // Invulnerability blink counter
+                if (this.invulnerableTimer > 0) this.invulnerableTimer--;
+
+                this.animFrame++;
+            }
+
+            takeDamage(amt) {
+                if (this.invulnerableTimer > 0) return;
+                this.hp = Math.max(0, this.hp - amt);
+                this.invulnerableTimer = 30; // ~0.5 sec invulnerability
+                addHitSparks(this.x, this.y - 35, '#ff1744');
+                audioFX.playHitSound();
+            }
+
+            draw(ctx) {
+                if (this.invulnerableTimer % 4 >= 2) return; // Blink effect on hit
+                drawRamaSprite(ctx, this.x, this.y - 10, this.facingRight, this.state, this.animFrame, this.isDrawingBow, this.aimAngle);
+            }
+        }
+
+        class Arrow {
+            constructor(x, y, vx, vy, isEnemy = false, isDivine = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.isEnemy = isEnemy;
+                this.isDivine = isDivine;
+                this.width = 25;
+                this.height = 4;
+                this.active = true;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Particle Trail
+                if (Math.random() < 0.6) {
+                    particles.push(new Particle(
+                        this.x, this.y,
+                        -this.vx * 0.1, -this.vy * 0.1,
+                        this.isDivine ? '#00e676' : (this.isEnemy ? '#ff1744' : '#ffc107'),
+                        2, 10
+                    ));
+                }
+
+                // Screen Boundary Check
+                if (this.x < 0 || this.x > CANVAS_WIDTH || this.y < 0 || this.y > CANVAS_HEIGHT) {
+                    this.active = false;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(Math.atan2(this.vy, this.vx));
+
+                ctx.strokeStyle = this.isDivine ? '#00e676' : (this.isEnemy ? '#ff5252' : '#ffd54f');
+                ctx.lineWidth = this.isDivine ? 4 : 2;
+                ctx.beginPath();
+                ctx.moveTo(-15, 0);
+                ctx.lineTo(10, 0);
+                ctx.stroke();
+
+                // Arrow Head
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(10, -4); ctx.lineTo(18, 0); ctx.lineTo(10, 4);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(type, x, y) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.vx = -1.5;
+                this.vy = 0;
+                this.active = true;
+                this.hitFlash = 0;
+
+                if (type === 'grunt') {
+                    this.hp = this.maxHp = 40;
+                    this.width = 36; this.height = 60;
+                    this.speed = 2;
+                } else if (type === 'archer') {
+                    this.hp = this.maxHp = 30;
+                    this.width = 30; this.height = 55;
+                    this.speed = 1.2;
+                    this.shootCooldown = 120;
+                } else if (type === 'flying') {
+                    this.hp = this.maxHp = 35;
+                    this.width = 40; this.height = 40;
+                    this.speed = 2.2;
+                } else if (type === 'armored') {
+                    this.hp = this.maxHp = 100;
+                    this.width = 50; this.height = 80;
+                    this.speed = 1.0;
+                }
+            }
+
+            update(player, arrows) {
+                if (this.hitFlash > 0) this.hitFlash--;
+
+                if (this.type === 'flying') {
+                    // Sine Wave Airborne Trajectory
+                    this.x -= this.speed;
+                    this.y += Math.sin(Date.now() * 0.005) * 2;
+                } else {
+                    // Walk toward player
+                    if (this.x > player.x + 80) {
+                        this.x -= this.speed;
+                        this.vx = -this.speed;
+                    } else if (this.x < player.x - 80) {
+                        this.x += this.speed;
+                        this.vx = this.speed;
+                    }
+
+                    // Ranged Enemy Shooting Logic
+                    if (this.type === 'archer') {
+                        this.shootCooldown--;
+                        if (this.shootCooldown <= 0) {
+                            arrows.push(new Arrow(this.x - 20, this.y - 30, -6, 0, true));
+                            this.shootCooldown = 140;
+                        }
+                    }
+                }
+
+                // Melee Damage Check to Player
+                const distToPlayer = Math.hypot(this.x - player.x, (this.y - 20) - (player.y - 30));
+                if (distToPlayer < 40) {
+                    player.takeDamage(8);
+                }
+
+                if (this.x < -50) this.active = false;
+            }
+
+            takeDamage(amt) {
+                this.hp -= amt;
+                this.hitFlash = 6;
+                addHitSparks(this.x, this.y - 25);
+                audioFX.playHitSound();
+                if (this.hp <= 0) {
+                    this.active = false;
+                    audioFX.playExplosion();
+                    addHitSparks(this.x, this.y - 25, '#ff6d00');
+                }
+            }
+
+            draw(ctx) {
+                drawEnemySprite(ctx, this);
+            }
+        }
+
+        class BossRavana {
+            constructor() {
+                this.x = 1000;
+                this.y = GROUND_Y;
+                this.hp = 1000;
+                this.maxHp = 1000;
+                this.phase = 1;
+                this.active = true;
+                this.hitFlash = 0;
+                this.attackCooldown = 90;
+            }
+
+            update(player, arrows) {
+                if (this.hitFlash > 0) this.hitFlash--;
+
+                // Phase Transitions
+                if (this.hp < 400 && this.phase === 2) {
+                    this.phase = 3;
+                    addAuraEffect(this.x, this.y - 50, '#ff1744');
+                } else if (this.hp < 700 && this.phase === 1) {
+                    this.phase = 2;
+                    addAuraEffect(this.x, this.y - 50, '#d500f9');
+                }
+
+                // Boss Movement
+                this.x += Math.sin(Date.now() * 0.002) * 1.5;
+
+                // Attack Patterns
+                this.attackCooldown--;
+                if (this.attackCooldown <= 0) {
+                    this.executeAttack(player, arrows);
+                    this.attackCooldown = this.phase === 3 ? 60 : (this.phase === 2 ? 80 : 110);
+                }
+            }
+
+            executeAttack(player, arrows) {
+                if (this.phase === 1) {
+                    // Straight Arrow Barrage
+                    arrows.push(new Arrow(this.x - 40, this.y - 60, -8, 0, true));
+                    arrows.push(new Arrow(this.x - 40, this.y - 40, -8, 1, true));
+                } else if (this.phase === 2) {
+                    // Multi-angle Spread
+                    for (let angle = -0.3; angle <= 0.3; angle += 0.2) {
+                        arrows.push(new Arrow(this.x - 40, this.y - 60, Math.cos(angle) * -8, Math.sin(angle) * 8, true));
+                    }
+                } else if (this.phase === 3) {
+                    // Divine Fury Attack
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            if (this.active) {
+                                arrows.push(new Arrow(this.x - 40, this.y - 70 + (i * 10), -9, (Math.random() - 0.5) * 3, true));
+                            }
+                        }, i * 100);
+                    }
+                }
+            }
+
+            takeDamage(amt) {
+                this.hp -= amt;
+                this.hitFlash = 6;
+                addHitSparks(this.x, this.y - 60, '#ffeb3b');
+                audioFX.playHitSound();
+                if (this.hp <= 0) {
+                    this.active = false;
+                    audioFX.playExplosion();
+                    addHitSparks(this.x, this.y - 60, '#ffd54f');
+                }
+            }
+
+            draw(ctx) {
+                drawRavanaBoss(ctx, this);
+            }
+        }
+
+        class TrainingTarget {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.hp = 20;
+                this.maxHp = 20;
+                this.active = true;
+                this.hitFlash = 0;
+            }
+
+            takeDamage(amt) {
+                this.hp -= amt;
+                this.hitFlash = 5;
+                audioFX.playHitSound();
+                addHitSparks(this.x, this.y, '#ffd54f');
+                if (this.hp <= 0) this.active = false;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#e53935';
+                ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#e53935';
+                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // ==========================================
+        // MAIN GAME ENGINE CONTROLLER
+        // ==========================================
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                this.state = 'MENU'; // MENU, STORY, PLAYING, PAUSED, LEVEL_COMPLETE, GAME_OVER
+                this.currentLevelIdx = 0;
+                this.score = 0;
+                this.kills = 0;
+
+                this.player = new Player();
+                this.arrows = [];
+                this.enemies = [];
+                this.targets = [];
+                this.boss = null;
+
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, isDown: false };
+
+                this.hanumanCooldown = 0;
+                this.waveProgress = 0;
+
+                this.setupEventListeners();
+                this.setupUIEvents();
+            }
+
+            setupEventListeners() {
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    if (e.code === 'KeyH') this.triggerHanumanBlessing();
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const scaleX = CANVAS_WIDTH / rect.width;
+                    const scaleY = CANVAS_HEIGHT / rect.height;
+                    this.mouse.x = (e.clientX - rect.left) * scaleX;
+                    this.mouse.y = (e.clientY - rect.top) * scaleY;
+                });
+
+                this.canvas.addEventListener('mousedown', (e) => {
+                    if (this.state === 'PLAYING') {
+                        this.mouse.isDown = true;
+                        this.shootArrowFromPlayer();
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.mouse.isDown = false;
+                });
+            }
+
+            setupUIEvents() {
+                document.getElementById('startGameBtn').onclick = () => {
+                    audioFX.init();
+                    this.startLevel(0);
+                };
+
+                document.getElementById('levelSelectBtn').onclick = () => {
+                    this.showPanel('levelSelectPanel');
+                };
+
+                document.getElementById('controlsBtn').onclick = () => {
+                    this.showPanel('controlsPanel');
+                };
+
+                document.getElementById('backToMenuBtn').onclick = () => {
+                    this.showPanel('menuPanel');
+                };
+
+                document.getElementById('closeControlsBtn').onclick = () => {
+                    this.showPanel('menuPanel');
+                };
+
+                document.querySelectorAll('.lvl-select-card').forEach(card => {
+                    card.onclick = (e) => {
+                        audioFX.init();
+                        const lvl = parseInt(card.dataset.level);
+                        this.startLevel(lvl);
+                    };
+                });
+
+                document.getElementById('continueStoryBtn').onclick = () => {
+                    this.state = 'PLAYING';
+                    this.hideAllPanels();
+                    document.getElementById('hudTop').style.opacity = '1';
+                    document.getElementById('hudBottom').style.opacity = '1';
+                };
+
+                document.getElementById('pauseBtn').onclick = () => {
+                    if (this.state === 'PLAYING') {
+                        this.state = 'PAUSED';
+                        this.showPanel('pausePanel');
+                    }
+                };
+
+                document.getElementById('resumeBtn').onclick = () => {
+                    this.state = 'PLAYING';
+                    this.hideAllPanels();
+                };
+
+                document.getElementById('restartLvlBtn').onclick = () => {
+                    this.startLevel(this.currentLevelIdx);
+                };
+
+                document.getElementById('quitToMenuBtn').onclick = () => {
+                    this.returnToMenu();
+                };
+
+                document.getElementById('nextLevelBtn').onclick = () => {
+                    if (this.currentLevelIdx + 1 < LEVEL_CONFIGS.length) {
+                        this.startLevel(this.currentLevelIdx + 1);
+                    } else {
+                        this.returnToMenu();
+                    }
+                };
+
+                document.getElementById('retryLevelBtn').onclick = () => {
+                    this.startLevel(this.currentLevelIdx);
+                };
+
+                document.getElementById('gameOverMenuBtn').onclick = () => {
+                    this.returnToMenu();
+                };
+
+                document.getElementById('hanumanBtn').onclick = () => {
+                    this.triggerHanumanBlessing();
+                };
+
+                document.getElementById('audioToggleBtn').onclick = () => {
+                    audioFX.muted = !audioFX.muted;
+                    document.getElementById('audioToggleBtn').innerText = audioFX.muted ? '🔇' : '🔊';
+                };
+            }
+
+            showPanel(panelId) {
+                const panels = ['menuPanel', 'levelSelectPanel', 'controlsPanel', 'storyPanel', 'pausePanel', 'levelCompletePanel', 'gameOverPanel'];
+                panels.forEach(p => {
+                    document.getElementById(p).classList.add('hidden');
+                    document.getElementById(p).classList.remove('flex');
+                });
+                document.getElementById(panelId).classList.remove('hidden');
+                document.getElementById(panelId).classList.add('flex');
+                document.getElementById('overlayContainer').classList.remove('hidden');
+            }
+
+            hideAllPanels() {
+                document.getElementById('overlayContainer').classList.add('hidden');
+            }
+
+            returnToMenu() {
+                this.state = 'MENU';
+                document.getElementById('hudTop').style.opacity = '0';
+                document.getElementById('hudBottom').style.opacity = '0';
+                this.showPanel('menuPanel');
+            }
+
+            startLevel(lvlIdx) {
+                this.currentLevelIdx = lvlIdx;
+                const config = LEVEL_CONFIGS[lvlIdx];
+
+                this.player.reset();
+                this.arrows = [];
+                this.enemies = [];
+                this.targets = [];
+                this.boss = null;
+                this.waveProgress = 0;
+                this.kills = 0;
+
+                // Configure UI HUD Elements
+                document.getElementById('levelTitleHUD').innerText = config.name.toUpperCase();
+                document.getElementById('bossHud').classList.add('hidden');
+
+                // Hanuman Ability Display
+                const hanumanContainer = document.getElementById('hanumanAbilityContainer');
+                if (lvlIdx >= 2) {
+                    hanumanContainer.classList.remove('hidden');
+                } else {
+                    hanumanContainer.classList.add('hidden');
+                }
+
+                // Spawn Targets or Enemies
+                if (config.id === 0) {
+                    for (let i = 0; i < config.targetsToClear; i++) {
+                        this.targets.push(new TrainingTarget(600 + i * 120, 350 + (i % 2) * 80));
+                    }
+                } else if (config.isBossLevel) {
+                    this.boss = new BossRavana();
+                    document.getElementById('bossHud').classList.remove('hidden');
+                } else {
+                    this.spawnEnemyWave();
+                }
+
+                // Story Cutscene Sequence Trigger
+                this.state = 'STORY';
+                document.getElementById('storySpeaker').innerText = config.storyIntro.speaker;
+                document.getElementById('storyAvatar').innerText = config.storyIntro.avatar;
+                document.getElementById('storyChapterTitle').innerText = config.storyIntro.title;
+                document.getElementById('storyText').innerText = config.storyIntro.text;
+                this.showPanel('storyPanel');
+            }
+
+            spawnEnemyWave() {
+                const config = LEVEL_CONFIGS[this.currentLevelIdx];
+                if (!config.enemyTypes) return;
+
+                for (let i = 0; i < config.enemiesPerWave; i++) {
+                    const eType = config.enemyTypes[Math.floor(Math.random() * config.enemyTypes.length)];
+                    const spawnX = 1300 + (i * 150);
+                    const spawnY = eType === 'flying' ? 300 : GROUND_Y;
+                    this.enemies.push(new Enemy(eType, spawnX, spawnY));
+                }
+                this.waveProgress++;
+            }
+
+            shootArrowFromPlayer() {
+                if (this.player.quiverEnergy < 15) return;
+
+                this.player.quiverEnergy -= 15;
+                audioFX.playBowRelease();
+
+                const speed = 16;
+                const vx = Math.cos(this.player.aimAngle) * speed * (this.player.facingRight ? 1 : -1);
+                const vy = Math.sin(this.player.aimAngle) * speed;
+
+                this.arrows.push(new Arrow(
+                    this.player.x + (this.player.facingRight ? 20 : -20),
+                    this.player.y - 40,
+                    vx, vy, false
+                ));
+            }
+
+            triggerHanumanBlessing() {
+                if (this.currentLevelIdx < 2 || this.hanumanCooldown > 0 || this.state !== 'PLAYING') return;
+
+                audioFX.playHanumanBlessing();
+                this.hanumanCooldown = 600; // 10s cooldown
+
+                // Clear normal enemies or heavy boss damage
+                this.enemies.forEach(e => e.takeDamage(100));
+                if (this.boss) this.boss.takeDamage(150);
+
+                addAuraEffect(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, '#ff9100');
+            }
+
+            update() {
+                if (this.state !== 'PLAYING') return;
+
+                // Handle Hanuman Cooldown timer
+                if (this.hanumanCooldown > 0) {
+                    this.hanumanCooldown--;
+                    const overlay = document.getElementById('hanumanCooldownOverlay');
+                    const btn = document.getElementById('hanumanBtn');
+                    overlay.classList.remove('hidden');
+                    overlay.innerText = Math.ceil(this.hanumanCooldown / 60) + 's';
+                    btn.disabled = true;
+                } else {
+                    document.getElementById('hanumanCooldownOverlay').classList.add('hidden');
+                    document.getElementById('hanumanBtn').disabled = false;
+                }
+
+                // Update Player
+                this.player.update(this.keys, this.mouse);
+
+                // Quick shoot via Keyboard 'F'
+                if (this.keys['KeyF']) {
+                    this.shootArrowFromPlayer();
+                    this.keys['KeyF'] = false;
+                }
+
+                // Check Game Over Condition
+                if (this.player.hp <= 0) {
+                    this.state = 'GAME_OVER';
+                    this.showPanel('gameOverPanel');
+                    return;
+                }
+
+                // Update Arrows & Collisions
+                this.arrows.forEach(arrow => {
+                    arrow.update();
+
+                    if (!arrow.active) return;
+
+                    if (arrow.isEnemy) {
+                        // Enemy Arrow hits Rama
+                        const dist = Math.hypot(arrow.x - this.player.x, arrow.y - (this.player.y - 35));
+                        if (dist < 25) {
+                            this.player.takeDamage(12);
+                            arrow.active = false;
+                        }
+                    } else {
+                        // Player Arrow hits Training Targets
+                        this.targets.forEach(target => {
+                            if (target.active && Math.hypot(arrow.x - target.x, arrow.y - target.y) < 25) {
+                                target.takeDamage(20);
+                                arrow.active = false;
+                                this.score += 50;
+                            }
+                        });
+
+                        // Player Arrow hits Enemies
+                        this.enemies.forEach(enemy => {
+                            if (enemy.active && Math.hypot(arrow.x - enemy.x, arrow.y - (enemy.y - 25)) < 30) {
+                                enemy.takeDamage(25);
+                                arrow.active = false;
+                                this.score += 100;
+                                if (!enemy.active) this.kills++;
+                            }
+                        });
+
+                        // Player Arrow hits Boss
+                        if (this.boss && this.boss.active) {
+                            if (Math.hypot(arrow.x - this.boss.x, arrow.y - (this.boss.y - 50)) < 50) {
+                                this.boss.takeDamage(20);
+                                arrow.active = false;
+                                this.score += 150;
+                            }
+                        }
+                    }
+                });
+
+                this.arrows = this.arrows.filter(a => a.active);
+
+                // Update Targets
+                this.targets = this.targets.filter(t => t.active);
+                if (this.currentLevelIdx === 0 && this.targets.length === 0) {
+                    this.triggerLevelComplete();
+                }
+
+                // Update Enemies & Waves
+                this.enemies.forEach(enemy => enemy.update(this.player, this.arrows));
+                this.enemies = this.enemies.filter(e => e.active);
+
+                const config = LEVEL_CONFIGS[this.currentLevelIdx];
+                if (config.enemyTypes && this.enemies.length === 0) {
+                    if (this.waveProgress < config.waveCount) {
+                        this.spawnEnemyWave();
+                    } else {
+                        this.triggerLevelComplete();
+                    }
+                }
+
+                // Update Boss
+                if (this.boss) {
+                    this.boss.update(this.player, this.arrows);
+                    if (!this.boss.active) {
+                        this.triggerLevelComplete();
+                    }
+                }
+
+                // Update Particles
+                particles.forEach(p => p.update());
+                particles = particles.filter(p => p.life > 0);
+
+                // Update HUD DOM
+                document.getElementById('hpBar').style.width = `${(this.player.hp / this.player.maxHp) * 100}%`;
+                document.getElementById('hpText').innerText = `${Math.ceil(this.player.hp)}/${this.player.maxHp}`;
+                document.getElementById('arrowEnergyBar').style.width = `${this.player.quiverEnergy}%`;
+                document.getElementById('scoreHUD').innerText = `SCORE: ${this.score}`;
+
+                if (this.boss) {
+                    document.getElementById('bossHpBar').style.width = `${Math.max(0, (this.boss.hp / this.boss.maxHp) * 100)}%`;
+                    document.getElementById('bossHpText').innerText = `${Math.ceil(Math.max(0, this.boss.hp))}/${this.boss.maxHp}`;
+                }
+            }
+
+            triggerLevelComplete() {
+                this.state = 'LEVEL_COMPLETE';
+                audioFX.playVictoryFanfare();
+                document.getElementById('lvlScoreVal').innerText = this.score;
+                document.getElementById('lvlKillsVal').innerText = this.kills;
+                document.getElementById('lvlHpVal').innerText = `${Math.ceil((this.player.hp / this.player.maxHp) * 100)}%`;
+                this.showPanel('levelCompletePanel');
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                const config = LEVEL_CONFIGS[this.currentLevelIdx] || LEVEL_CONFIGS[0];
+
+                // Render Background
+                drawBackground(this.ctx, config.bgType, this.player.x);
+
+                // Render Targets
+                this.targets.forEach(t => t.draw(this.ctx));
+
+                // Render Player
+                this.player.draw(this.ctx);
+
+                // Render Enemies
+                this.enemies.forEach(e => e.draw(this.ctx));
+
+                // Render Boss
+                if (this.boss && this.boss.active) this.boss.draw(this.ctx);
+
+                // Render Arrows
+                this.arrows.forEach(a => a.draw(this.ctx));
+
+                // Render Particles
+                particles.forEach(p => p.draw(this.ctx));
+            }
+
+            run() {
+                const loop = () => {
+                    this.update();
+                    this.render();
+                    requestAnimationFrame(loop);
+                };
+                loop();
+            }
+        }
+
+        // Initialize and Start Game Engine
+        window.onload = () => {
+            const game = new GameEngine();
+            game.run();
+        };
+    </script>
+</body>
+</html>
